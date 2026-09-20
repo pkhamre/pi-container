@@ -1,0 +1,9 @@
+.git
+.gitignore
+README.md
+test_*.sh
+test_*.py
+homebase
+workspace
+secrets
+custom-ca.crt

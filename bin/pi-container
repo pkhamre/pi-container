@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${PI_CONTAINER_REPO:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+ENGINE="${CONTAINER_ENGINE:-}"
+
+if [[ -z "$ENGINE" ]]; then
+  if command -v podman >/dev/null 2>&1; then ENGINE=podman
+  elif command -v docker >/dev/null 2>&1; then ENGINE=docker
+  else echo "Error: no container engine found; install Podman/Docker or set CONTAINER_ENGINE" >&2; exit 1; fi
+fi
+command -v "$ENGINE" >/dev/null 2>&1 || { echo "Error: container engine not found: $ENGINE" >&2; exit 1; }
+
+STATE_DIR="${HOME}/.pi-container"
+WORKSPACE="${PI_WORKSPACE:-$(pwd)}"
+MEMORY_LIMIT="${MEMORY_LIMIT:-4g}"
+CPU_LIMIT="${CPU_LIMIT:-4}"
+HOST_ACCESS=0
+
+[[ -d "$WORKSPACE" ]] || { echo "Error: workspace path is not an existing directory: $WORKSPACE" >&2; exit 1; }
+mkdir -p "$STATE_DIR/state" "$STATE_DIR/secrets"
+chmod 700 "$STATE_DIR" "$STATE_DIR/state" "$STATE_DIR/secrets"
+for secret in "$STATE_DIR/secrets"/*; do
+  [[ -f "$secret" && ! -L "$secret" ]] && chmod 600 "$secret"
+done
+
+while (($#)); do
+  case "$1" in
+    --memory) (($# >= 2)) || { echo "error: --memory requires a value" >&2; exit 2; }; MEMORY_LIMIT=$2; shift 2;;
+    --cpus) (($# >= 2)) || { echo "error: --cpus requires a value" >&2; exit 2; }; CPU_LIMIT=$2; shift 2;;
+    --host-access) HOST_ACCESS=1; shift;;
+    *) break;;
+  esac
+done
+
+reject_proxy_credentials() {
+  [[ "$1" != *://*@* ]] || { echo "error: proxy URLs with embedded credentials are not supported" >&2; exit 2; }
+}
+
+ENV_ARGS=()
+for pair in HTTP_PROXY HTTPS_PROXY NO_PROXY; do
+  lower="${pair,,}"
+  value="${!pair:-${!lower:-}}"
+  if [[ -n "$value" ]]; then
+    [[ "$pair" == NO_PROXY ]] || reject_proxy_credentials "$value"
+    ENV_ARGS+=(--env "$pair=$value" --env "$lower=$value")
+  fi
+done
+
+GIT_ARGS=()
+if [[ -f "$HOME/.gitconfig" ]]; then
+  GIT_ARGS+=(-v "$HOME/.gitconfig:/app/.gitconfig:ro,Z")
+fi
+
+HOST_ARGS=()
+if ((HOST_ACCESS)); then
+  if [[ "$ENGINE" == podman ]]; then HOST_ARGS+=(--add-host host.containers.internal:host-gateway)
+  else HOST_ARGS+=(--add-host host.docker.internal:host-gateway); fi
+  echo "warning: host access is enabled; Pi can reach host services through the container gateway" >&2
+fi
+
+USERNS_ARGS=()
+if [[ "$ENGINE" == podman ]]; then
+  rootless="$($ENGINE info --format '{{.Host.Security.Rootless}}' 2>/dev/null || true)"
+  [[ "$rootless" == "true" ]] && USERNS_ARGS+=(--userns=keep-id)
+fi
+
+RUN_FLAGS=(-i)
+[[ -t 0 ]] && RUN_FLAGS+=(-t)
+
+exec "$ENGINE" run --rm "${RUN_FLAGS[@]}" "${USERNS_ARGS[@]}" \
+  --workdir /workspace --read-only --tmpfs /tmp:exec,size=512m,mode=1777 \
+  --cap-drop=ALL --security-opt=no-new-privileges \
+  --memory="$MEMORY_LIMIT" --cpus="$CPU_LIMIT" \
+  "${ENV_ARGS[@]}" "${HOST_ARGS[@]}" "${GIT_ARGS[@]}" \
+  -v "$STATE_DIR/state:/app/.pi:rw,Z" \
+  -v "$STATE_DIR/secrets:/run/secrets:ro,Z" \
+  -v "$WORKSPACE:/workspace:rw,Z" \
+  pi-container:latest "$@"

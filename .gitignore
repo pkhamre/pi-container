@@ -1,0 +1,5 @@
+homebase/
+workspace/
+secrets/
+*.pyc
+__pycache__/

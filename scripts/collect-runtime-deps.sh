@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ "$#" -ge 2 ] || { echo "usage: $0 ROOTFS EXECUTABLE..." >&2; exit 2; }
+ROOTFS="$1"; shift
+mkdir -p "$ROOTFS"
+
+declare -A PROCESSED=()
+
+NODE_TOOLS=(npm npx corepack)
+NODE_PATHS=()
+for tool in "${NODE_TOOLS[@]}"; do
+  NODE_PATHS+=("/usr/bin/$tool" "/usr/lib/node_modules/$tool")
+done
+# Include application-installed modules used by OpenCode MCP/plugins.
+NODE_PATHS+=("/usr/lib/node_modules" "/usr/local/node_modules" "/usr/local/lib/node_modules")
+
+cp_with_parents() {
+  local src="$1"
+  local dst="${ROOTFS}${src}"
+  mkdir -p "$(dirname "$dst")"
+  if [ -L "$src" ]; then
+    rm -f "$dst"
+    cp -a "$src" "$dst"
+    local resolved; resolved="$(readlink -f "$src")"
+    if [ -n "$resolved" ] && [ -e "$resolved" ] && [ "$resolved" != "$src" ]; then
+      cp_with_parents "$resolved"
+    fi
+  else
+    cp -aT "$src" "$dst"
+  fi
+}
+
+ldd_path() {
+  local path="${1%%(*}"
+  echo "${path%)}"
+}
+
+collect_ldd() {
+  local output
+  if ! output="$(ldd "$1" 2>&1)"; then
+    case "$output" in
+      *"not a dynamic executable"*|*"statically linked"*) return ;;
+      *) echo "failed to resolve shared libraries for $1: $output" >&2; return 1 ;;
+    esac
+  fi
+
+  while IFS= read -r line; do
+    for token in $line; do
+      [[ "$token" == /* ]] || continue
+      # strip trailing load-address, e.g. "/lib/x.so (0x...)" -> "/lib/x.so"
+      local p; p="$(ldd_path "$token")"
+      [ -e "$p" ] || { echo "missing shared library $p for $1" >&2; return 1; }
+      cp_with_parents "$p"
+    done
+  done <<< "$output"
+}
+
+process() {
+  local resolved; resolved="$(readlink -f "$1")"
+  echo "collect-runtime-deps: ${1} -> ${resolved}" >&2
+  # Preserve every requested entry, including multiple symlinks to one target.
+  cp_with_parents "$1"
+  [ -n "${PROCESSED[$resolved]:-}" ] && return
+  PROCESSED[$resolved]=1
+  collect_ldd "$1"
+  local shebang; IFS= read -r shebang < "$1" 2>/dev/null || true
+  if [[ "$shebang" == '#!'* ]]; then
+    local interp="${shebang#\#!}"; interp="${interp%% *}"
+    [ -e "$interp" ] || { echo "missing interpreter $interp for $1" >&2; return 1; }
+    process "$interp"
+  fi
+  local name; name="$(basename "$resolved")"
+  case "$name" in python|python3|python3.*) collect_python "$resolved" ;; esac
+  for tool in node nodejs "${NODE_TOOLS[@]}"; do
+    [ "$name" = "$tool" ] || continue
+    collect_node
+    break
+  done
+}
+
+collect_python() {
+  local p
+  while IFS= read -r p; do
+    [ -n "$p" ] && [ -e "$p" ] && cp_with_parents "$p"
+  done < <("$1" -c "
+import os, sysconfig, site
+paths = set()
+for k in ('stdlib','platstdlib','purelib','platlib'):
+    v = sysconfig.get_paths().get(k)
+    if v: paths.add(v)
+for e in __import__('sys').path:
+    if 'site-packages' in e or 'dist-packages' in e:
+        paths.add(e)
+func = getattr(site, 'getsitepackages', None)
+if callable(func):
+    for e in func(): paths.add(e)
+for p in sorted(paths):
+    print(p)
+" 2>/dev/null || true)
+}
+
+collect_node() {
+  local p
+  for p in "${NODE_PATHS[@]}"; do
+    echo "collect-runtime-deps: node path ${p}" >&2
+    if [ -e "$p" ]; then
+      cp_with_parents "$p"
+    fi
+  done
+}
+
+collect_shell() {
+  local sh; sh="$(type -P sh 2>/dev/null || true)"
+  [ -n "$sh" ] || { echo "missing POSIX shell: sh" >&2; return 1; }
+  process "$sh"
+  local interpreter; interpreter="$(readlink -f "$sh")"
+  [ -n "$interpreter" ] && [ -e "$interpreter" ] || { echo "cannot resolve shell interpreter for $sh" >&2; return 1; }
+
+  # Ship the interpreter once and expose it at the standard shell paths. The
+  # links are absolute so they stay valid after the usr-merge step and wherever
+  # /bin surfaces in the final image.
+  mkdir -p "$ROOTFS/usr/bin" "$ROOTFS/bin"
+  rm -f "$ROOTFS/bin/sh" "$ROOTFS/usr/bin/sh"
+  ln -s "$interpreter" "$ROOTFS/usr/bin/sh"
+  ln -s "$interpreter" "$ROOTFS/bin/sh"
+}
+
+for exe in "$@"; do
+  echo "collect-runtime-deps: ${exe}" >&2
+  # `command -v` reports Bash builtins such as `pwd` as the bare name rather
+  # than an executable path. Resolve only external commands for the rootfs.
+  p="$(type -P "$exe" 2>/dev/null || true)"
+  [ -n "$p" ] || { echo "missing executable: $exe" >&2; exit 1; }
+  if [ "$exe" = sh ]; then
+    collect_shell
+  else
+    process "$p"
+  fi
+  [ -e "$ROOTFS$p" ] || [ -L "$ROOTFS$p" ] || { echo "collector did not copy $exe to $ROOTFS" >&2; exit 1; }
+done
+
+for p in /etc/ssl/certs /usr/local/share/ca-certificates /etc/passwd /etc/group /etc/ld.so.cache \
+         /etc/ld.so.conf /etc/ld.so.conf.d /usr/share/zoneinfo; do
+  if [ -e "$p" ]; then
+    cp_with_parents "$p"
+  fi
+done
