@@ -79,6 +79,7 @@ ENV HOME=/app
 ENV PATH=/usr/local/bin:/usr/bin:/bin
 ENV PI_CODING_AGENT_DIR=/app/.pi/agent
 ENV NPM_CONFIG_CAFILE=/etc/ssl/certs/ca-certificates.crt
+ENV NPM_CONFIG_CACHE=/tmp/.npm
 
 COPY --from=collector /opt/runtime-rootfs/ /
 COPY --chmod=0755 bootstrap.py /usr/local/bin/bootstrap.py

@@ -116,7 +116,14 @@ google_application_credentials -> GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/go
 aws_web_identity_token_file    -> AWS_WEB_IDENTITY_TOKEN_FILE=/run/secrets/aws_web_identity_token_file
 aws_shared_credentials_file    -> AWS_SHARED_CREDENTIALS_FILE=/run/secrets/aws_shared_credentials_file
 aws_config_file                -> AWS_CONFIG_FILE=/run/secrets/aws_config_file
+custom_ca_certificate          -> NODE_EXTRA_CA_CERTS=/run/secrets/custom_ca_certificate
 ```
+
+Place a PEM-encoded CA certificate (or bundle) in
+`~/.pi-container/secrets/custom_ca_certificate`. Node.js-based clients in the
+container will trust it in addition to the system CA certificates. The file is
+mounted read-only and is not copied into the image. Restart the container after
+changing it.
 
 OAuth login can be performed interactively with `pi` and persists under the
 same state mount. Do not put secrets on the command line.

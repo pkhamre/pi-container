@@ -10,10 +10,12 @@ def test_values_and_path_secrets() -> None:
         root = Path(directory)
         (root / "anthropic_api_key").write_text("secret\n", encoding="utf-8")
         (root / "google_application_credentials").write_text("{}", encoding="utf-8")
+        (root / "custom_ca_certificate").write_text("certificate", encoding="utf-8")
         env = {}
         bootstrap.load_secrets(root, env)
         assert env["ANTHROPIC_API_KEY"] == "secret"
         assert env["GOOGLE_APPLICATION_CREDENTIALS"] == str(root / "google_application_credentials")
+        assert env["NODE_EXTRA_CA_CERTS"] == str(root / "custom_ca_certificate")
 
 
 def test_unsupported_files_are_ignored() -> None:

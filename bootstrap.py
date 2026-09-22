@@ -78,6 +78,7 @@ PATH_SECRETS = {
     "aws_web_identity_token_file": "AWS_WEB_IDENTITY_TOKEN_FILE",
     "aws_shared_credentials_file": "AWS_SHARED_CREDENTIALS_FILE",
     "aws_config_file": "AWS_CONFIG_FILE",
+    "custom_ca_certificate": "NODE_EXTRA_CA_CERTS",
 }
 
 ENVIRONMENT_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
