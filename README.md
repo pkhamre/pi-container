@@ -164,15 +164,15 @@ make clean
 make prune-cache
 ```
 
-Override the verified package version with:
+Override the verified package, Node major, or npm version with:
 
 ```sh
-make build PI_VERSION=0.86.1
-docker build --build-arg PI_VERSION=0.86.1 -t pi-container:latest .
+make build PI_VERSION=0.86.1 NODE_MAJOR=24 NPM_VERSION=12.1.0
+docker build --build-arg PI_VERSION=0.86.1 --build-arg NODE_MAJOR=24 --build-arg NPM_VERSION=12.1.0 -t pi-container:latest .
 ```
 
-The default is the exact published version `0.86.1`. Pi currently requires
-Node `>=22.19.0`; the image uses Node 24.
+The default is the exact published Pi version `0.86.1`, Node 24, and npm
+`12.1.0`. Pi currently requires Node `>=22.19.0`.
 
 ## Troubleshooting
 

@@ -5,6 +5,7 @@ FROM debian:13-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c70
 ARG USER_UID=1000
 ARG USER_GID=1000
 ARG NODE_MAJOR=24
+ARG NPM_VERSION=12.1.0
 ARG PI_VERSION=0.86.1
 
 ARG HTTP_PROXY
@@ -32,7 +33,7 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     rm -rf /var/lib/apt/lists/*
 
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
-    npm install --global --no-audit --no-fund npm@12.0.2 \
+    npm install --global --no-audit --no-fund npm@"${NPM_VERSION}" \
       @earendil-works/pi-coding-agent@"${PI_VERSION}" \
     && PI_ROOT="$(npm root --global)" \
     && ln -sf "${PI_ROOT}/@earendil-works/pi-coding-agent/dist/bundle/cli.js" /usr/local/bin/pi \

@@ -4,12 +4,16 @@ ENGINE ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo docke
 USER_UID := $(shell id -u)
 USER_GID := $(shell id -g)
 PI_VERSION ?= 0.86.1
+NODE_MAJOR ?= 24
+NPM_VERSION ?= 12.1.0
+
+BUILD_ARGS = --build-arg USER_UID=$(USER_UID) --build-arg USER_GID=$(USER_GID) --build-arg PI_VERSION=$(PI_VERSION) --build-arg NODE_MAJOR=$(NODE_MAJOR) --build-arg NPM_VERSION=$(NPM_VERSION)
 
 build:
-	$(ENGINE) build --build-arg USER_UID=$(USER_UID) --build-arg USER_GID=$(USER_GID) --build-arg PI_VERSION=$(PI_VERSION) -t pi-container:latest .
+	$(ENGINE) build $(BUILD_ARGS) -t pi-container:latest .
 
 build-builder-tools:
-	$(ENGINE) build --build-arg USER_UID=$(USER_UID) --build-arg USER_GID=$(USER_GID) --build-arg PI_VERSION=$(PI_VERSION) --target builder-tools -t pi-container:builder-tools .
+	$(ENGINE) build $(BUILD_ARGS) --target builder-tools -t pi-container:builder-tools .
 
 build-latest:
 	@set -eu; version=$$(curl -fsSL https://registry.npmjs.org/%40earendil-works%2Fpi-coding-agent/latest | jq -r .version); test -n "$$version"; $(MAKE) build PI_VERSION=$$version

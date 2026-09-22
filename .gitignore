@@ -1,5 +1,6 @@
 homebase/
 workspace/
 secrets/
+custom-ca.*
 *.pyc
 __pycache__/
