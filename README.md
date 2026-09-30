@@ -7,7 +7,7 @@ current host directory is the only project directory mounted read-write.
 
 - Docker or Podman
 - GNU Make for build targets
-- `curl` and `jq` for `make build-latest`
+- `curl` and Python 3 for `make build-latest`
 
 ## Build and run
 

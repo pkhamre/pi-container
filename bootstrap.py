@@ -2,7 +2,6 @@
 """Load explicitly allowlisted secrets, then replace this process with pi."""
 
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -81,9 +80,6 @@ PATH_SECRETS = {
     "custom_ca_certificate": "NODE_EXTRA_CA_CERTS",
 }
 
-ENVIRONMENT_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
-
-
 def load_secrets(secrets_dir: Path = SECRETS_DIR, environ: dict[str, str] | None = None) -> None:
     if not secrets_dir.is_dir():
         return
@@ -95,7 +91,7 @@ def load_secrets(secrets_dir: Path = SECRETS_DIR, environ: dict[str, str] | None
         if entry.is_symlink() or not entry.is_file():
             raise RuntimeError(f"secret must be a regular file: {entry.name}")
         name = VALUE_SECRETS.get(entry.name) or PATH_SECRETS[entry.name]
-        if not ENVIRONMENT_NAME.fullmatch(name) or name in seen:
+        if name in seen:
             raise RuntimeError(f"invalid or duplicate secret: {entry.name}")
         seen.add(name)
         if entry.name in PATH_SECRETS:

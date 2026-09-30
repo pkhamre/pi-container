@@ -16,7 +16,7 @@ build-builder-tools:
 	$(ENGINE) build $(BUILD_ARGS) --target builder-tools -t pi-container:builder-tools .
 
 build-latest:
-	@set -eu; version=$$(curl -fsSL https://registry.npmjs.org/%40earendil-works%2Fpi-coding-agent/latest | jq -r .version); test -n "$$version"; $(MAKE) build PI_VERSION=$$version
+	@set -eu; version=$$(curl -fsSL https://registry.npmjs.org/%40earendil-works%2Fpi-coding-agent/latest | python3 -c 'import json, sys; print(json.load(sys.stdin)["version"])'); test -n "$$version"; $(MAKE) build PI_VERSION=$$version
 
 shell: build-builder-tools
 	mkdir -p homebase workspace secrets

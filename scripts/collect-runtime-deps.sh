@@ -31,11 +31,6 @@ cp_with_parents() {
   fi
 }
 
-ldd_path() {
-  local path="${1%%(*}"
-  echo "${path%)}"
-}
-
 collect_ldd() {
   local output
   if ! output="$(ldd "$1" 2>&1)"; then
@@ -49,7 +44,7 @@ collect_ldd() {
     for token in $line; do
       [[ "$token" == /* ]] || continue
       # strip trailing load-address, e.g. "/lib/x.so (0x...)" -> "/lib/x.so"
-      local p; p="$(ldd_path "$token")"
+      local p="$token"
       [ -e "$p" ] || { echo "missing shared library $p for $1" >&2; return 1; }
       cp_with_parents "$p"
     done
