@@ -6,6 +6,8 @@ TEST_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEST_DIR"' EXIT
 mkdir -p "$TEST_DIR/bin" "$TEST_DIR/home" "$TEST_DIR/workspace"
 printf '%s\n' '[user]' '  name = Test User' '  email = test@example.com' > "$TEST_DIR/home/.gitconfig"
+mkdir -p "$TEST_DIR/home/.config/git"
+printf '%s\n' '[user]' '  signingkey = test-key' > "$TEST_DIR/home/.config/git/config"
 
 cat > "$TEST_DIR/bin/podman" <<'EOF'
 #!/usr/bin/env bash
@@ -30,6 +32,7 @@ grep -F -- "$TEST_DIR/home/.pi-container/state:/app/.pi:rw,Z" "$TEST_DIR/args"
 grep -F -- "$TEST_DIR/home/.pi-container/secrets:/run/secrets:ro,Z" "$TEST_DIR/args"
 grep -F -- "$TEST_DIR/workspace:/workspace:rw,Z" "$TEST_DIR/args"
 grep -F -- "$TEST_DIR/home/.gitconfig:/app/.gitconfig:ro,Z" "$TEST_DIR/args"
+grep -F -- "$TEST_DIR/home/.config/git/config:/app/.config/git/config:ro,Z" "$TEST_DIR/args"
 grep -Fx -- '--read-only' "$TEST_DIR/args"
 grep -F -- '--tmpfs' "$TEST_DIR/args"
 grep -Fx -- '--cap-drop=ALL' "$TEST_DIR/args"

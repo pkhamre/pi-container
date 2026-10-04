@@ -55,7 +55,7 @@ RUN mkdir -p /opt/runtime-rootfs && \
     /usr/local/bin/collect-runtime-deps.sh /opt/runtime-rootfs \
       pi node npm npx bash python3 git rg fdfind \
       /usr/lib/git-core/git-remote-http /usr/lib/git-core/git-remote-https \
-      mkdir find grep cat head tail sed awk ls cp mv rm chmod wc sort cut env date \
+      mkdir find grep cat head tail sed awk ls cp mv rm chmod wc sort cut env date mktemp \
       dirname basename readlink pwd sh
 
 RUN cd /opt/runtime-rootfs && \
