@@ -52,6 +52,9 @@ GIT_ARGS=()
 if [[ -f "$HOME/.gitconfig" ]]; then
   GIT_ARGS+=(-v "$HOME/.gitconfig:/app/.gitconfig:ro,Z")
 fi
+if [[ -f "$HOME/.config/git/config" ]]; then
+  GIT_ARGS+=(-v "$HOME/.config/git/config:/app/.config/git/config:ro,Z")
+fi
 
 HOST_ARGS=()
 if ((HOST_ACCESS)); then

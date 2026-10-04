@@ -65,7 +65,7 @@ RUN cd /opt/runtime-rootfs && \
       fi; \
     done
 
-RUN mkdir -p /opt/runtime-rootfs/app/.pi /opt/runtime-rootfs/app/.cache /opt/runtime-rootfs/workspace /opt/runtime-rootfs/run/secrets && \
+RUN mkdir -p /opt/runtime-rootfs/app/.pi /opt/runtime-rootfs/app/.cache /opt/runtime-rootfs/app/.config/git /opt/runtime-rootfs/workspace /opt/runtime-rootfs/run/secrets && \
     chown -R "${USER_UID}:${USER_GID}" /opt/runtime-rootfs/app /opt/runtime-rootfs/workspace && \
     printf 'pi:x:%s:%s:Pi User:/app:/bin/bash\n' "${USER_UID}" "${USER_GID}" >> /opt/runtime-rootfs/etc/passwd && \
     printf 'pi:x:%s:\n' "${USER_GID}" >> /opt/runtime-rootfs/etc/group
