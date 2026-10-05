@@ -3,9 +3,9 @@
 ENGINE ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo docker)
 USER_UID := $(shell id -u)
 USER_GID := $(shell id -g)
-PI_VERSION ?= 0.86.1
-NODE_MAJOR ?= 24
-NPM_VERSION ?= 12.1.0
+PI_VERSION ?= 1.0.3
+NODE_MAJOR ?= 26
+NPM_VERSION ?= 12.2.0
 
 BUILD_ARGS = --build-arg USER_UID=$(USER_UID) --build-arg USER_GID=$(USER_GID) --build-arg PI_VERSION=$(PI_VERSION) --build-arg NODE_MAJOR=$(NODE_MAJOR) --build-arg NPM_VERSION=$(NPM_VERSION)
 

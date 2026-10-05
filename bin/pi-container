@@ -56,6 +56,12 @@ if [[ -f "$HOME/.config/git/config" ]]; then
   GIT_ARGS+=(-v "$HOME/.config/git/config:/app/.config/git/config:ro,Z")
 fi
 
+KUBE_ARGS=()
+if [[ -f "$HOME/.kube/config" ]]; then
+  KUBE_ARGS+=(-v "$HOME/.kube/config:/run/kubeconfig:ro,Z")
+  ENV_ARGS+=(--env KUBECONFIG=/run/kubeconfig)
+fi
+
 HOST_ARGS=()
 if ((HOST_ACCESS)); then
   if [[ "$ENGINE" == podman ]]; then HOST_ARGS+=(--add-host host.containers.internal:host-gateway)
@@ -76,7 +82,7 @@ exec "$ENGINE" run --rm "${RUN_FLAGS[@]}" "${USERNS_ARGS[@]}" \
   --workdir /workspace --read-only --tmpfs /tmp:exec,size=512m,mode=1777 \
   --cap-drop=ALL --security-opt=no-new-privileges \
   --memory="$MEMORY_LIMIT" --cpus="$CPU_LIMIT" \
-  "${ENV_ARGS[@]}" "${HOST_ARGS[@]}" "${GIT_ARGS[@]}" \
+  "${ENV_ARGS[@]}" "${HOST_ARGS[@]}" "${GIT_ARGS[@]}" "${KUBE_ARGS[@]}" \
   -v "$STATE_DIR/state:/app/.pi:rw,Z" \
   -v "$STATE_DIR/secrets:/run/secrets:ro,Z" \
   -v "$WORKSPACE:/workspace:rw,Z" \

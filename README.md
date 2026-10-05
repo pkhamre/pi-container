@@ -56,7 +56,7 @@ The launcher stores Pi state below `~/.pi-container/state` and mounts it at
 - `~/.pi/agent/extensions/`, `skills/`, `prompts/`, and `themes/`
 - `~/.pi/agent/models-store.json`, `trust.json`, and `crashes.json`
 
-The entire host home directory is not mounted.
+The entire host home directory is not mounted. When `~/.kube/config` exists, it is mounted read-only at `/run/kubeconfig` and `KUBECONFIG` is set so `kubectl` uses it by default. The image includes `kubectl`, `helm`, and `skopeo`.
 
 ## Secrets
 
@@ -167,12 +167,12 @@ make prune-cache
 Override the verified package, Node major, or npm version with:
 
 ```sh
-make build PI_VERSION=0.86.1 NODE_MAJOR=24 NPM_VERSION=12.1.0
-docker build --build-arg PI_VERSION=0.86.1 --build-arg NODE_MAJOR=24 --build-arg NPM_VERSION=12.1.0 -t pi-container:latest .
+make build PI_VERSION=1.0.3 NODE_MAJOR=26 NPM_VERSION=12.2.0
+docker build --build-arg PI_VERSION=1.0.3 --build-arg NODE_MAJOR=26 --build-arg NPM_VERSION=12.2.0 -t pi-container:latest .
 ```
 
-The default is the exact published Pi version `0.86.1`, Node 24, and npm
-`12.1.0`. Pi currently requires Node `>=22.19.0`.
+The default is the exact published Pi version `1.0.3`, Node 26, and npm
+`12.2.0`. Pi currently requires Node `>=22.19.0`.
 
 ## Troubleshooting
 

@@ -4,9 +4,9 @@ FROM debian:13-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c70
 
 ARG USER_UID=1000
 ARG USER_GID=1000
-ARG NODE_MAJOR=24
-ARG NPM_VERSION=12.1.0
-ARG PI_VERSION=0.86.1
+ARG NODE_MAJOR=26
+ARG NPM_VERSION=12.2.0
+ARG PI_VERSION=1.0.3
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
@@ -19,8 +19,11 @@ ENV NPM_CONFIG_CAFILE=/etc/ssl/certs/ca-certificates.crt
 
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     apt-get update && apt-get install --no-install-recommends -y \
-      bash ca-certificates curl fd-find git gnupg jq openssl python3 ripgrep \
+      bash ca-certificates curl fd-find git gnupg jq kubernetes-client openssl python3 ripgrep skopeo tar \
     && rm -rf /var/lib/apt/lists/*
+
+COPY custom-ca.crt /tmp/custom-ca.crt
+RUN cat /tmp/custom-ca.crt >> /etc/ssl/certs/ca-certificates.crt && rm /tmp/custom-ca.crt
 
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     mkdir -p /etc/apt/keyrings && \
@@ -39,7 +42,14 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     && ln -sf "${PI_ROOT}/@earendil-works/pi-coding-agent/dist/bundle/cli.js" /usr/local/bin/pi \
     && chmod 0755 "${PI_ROOT}/@earendil-works/pi-coding-agent/dist/bundle/cli.js"
 
-RUN node --version && npm --version && pi --version && bash --version | head -n 1
+ARG HELM_VERSION=v4.3.0
+RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
+    arch="$(dpkg --print-architecture)"; case "$arch" in amd64) helm_arch=amd64;; arm64) helm_arch=arm64;; *) echo "unsupported Helm architecture: $arch" >&2; exit 1;; esac; \
+    curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${helm_arch}.tar.gz" -o /tmp/helm.tar.gz && \
+    tar -xzf /tmp/helm.tar.gz -C /tmp && install -m 0755 "/tmp/linux-${helm_arch}/helm" /usr/local/bin/helm && \
+    rm -rf /tmp/helm.tar.gz "/tmp/linux-${helm_arch}"
+
+RUN node --version && npm --version && pi --version && kubectl version --client && helm version --short && skopeo --version && bash --version | head -n 1
 
 RUN ln -sf "$(command -v fdfind)" /usr/local/bin/fd
 
@@ -53,9 +63,9 @@ ARG USER_GID=1000
 
 RUN mkdir -p /opt/runtime-rootfs && \
     /usr/local/bin/collect-runtime-deps.sh /opt/runtime-rootfs \
-      pi node npm npx bash python3 git rg fdfind \
+      pi node npm npx bash python3 git rg fdfind kubectl helm skopeo \
       /usr/lib/git-core/git-remote-http /usr/lib/git-core/git-remote-https \
-      mkdir find grep cat head tail sed awk ls cp mv rm chmod wc sort cut env date mktemp \
+      mkdir mktemp find grep cat head tail sed awk ls cp mv rm chmod wc sort cut env date \
       dirname basename readlink pwd sh
 
 RUN cd /opt/runtime-rootfs && \
