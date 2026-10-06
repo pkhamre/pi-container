@@ -26,6 +26,7 @@ test:
 	./test_bootstrap.py
 	./test_launcher.sh
 	python3 test_build_config.py
+	python3 test_collector.py
 	./test_collect_runtime_deps.sh
 
 smoke: build

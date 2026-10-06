@@ -5,29 +5,41 @@ set -euo pipefail
 ROOTFS="$1"; shift
 mkdir -p "$ROOTFS"
 
-declare -A PROCESSED=()
+declare -A PROCESSED=() COPIED=() COPIED_DIRS=()
+NODE_COLLECTED=0
 
 NODE_TOOLS=(npm npx corepack)
-NODE_PATHS=()
+# Copy module roots before their CLI links; do not copy npm again as a subtree.
+NODE_PATHS=(/usr/lib/node_modules /usr/local/node_modules /usr/local/lib/node_modules)
 for tool in "${NODE_TOOLS[@]}"; do
-  NODE_PATHS+=("/usr/bin/$tool" "/usr/lib/node_modules/$tool")
+  NODE_PATHS+=("/usr/bin/$tool")
 done
-# Include application-installed modules used by OpenCode MCP/plugins.
-NODE_PATHS+=("/usr/lib/node_modules" "/usr/local/node_modules" "/usr/local/lib/node_modules")
 
 cp_with_parents() {
   local src="$1"
   local dst="${ROOTFS}${src}"
-  mkdir -p "$(dirname "$dst")"
+  local covered="${COPIED[$src]:-}" parent="${src%/*}"
+  while [[ -z "$covered" && -n "$parent" ]]; do
+    covered="${COPIED_DIRS[$parent]:-}"
+    parent="${parent%/*}"
+  done
+  if [[ -z "$covered" ]]; then
+    mkdir -p "$(dirname "$dst")"
+    if [ -L "$src" ]; then
+      rm -f "$dst"
+      cp -a "$src" "$dst"
+    else
+      cp -aT "$src" "$dst"
+      [ ! -d "$src" ] || COPIED_DIRS[$src]=1
+    fi
+    COPIED[$src]=1
+  fi
+  # Even a link already included in a copied directory may point outside it.
   if [ -L "$src" ]; then
-    rm -f "$dst"
-    cp -a "$src" "$dst"
     local resolved; resolved="$(readlink -f "$src")"
     if [ -n "$resolved" ] && [ -e "$resolved" ] && [ "$resolved" != "$src" ]; then
       cp_with_parents "$resolved"
     fi
-  else
-    cp -aT "$src" "$dst"
   fi
 }
 
@@ -96,6 +108,7 @@ for p in sorted(paths):
 }
 
 collect_node() {
+  [[ "$NODE_COLLECTED" == 0 ]] || return 0
   local p
   for p in "${NODE_PATHS[@]}"; do
     echo "collect-runtime-deps: node path ${p}" >&2
@@ -103,6 +116,7 @@ collect_node() {
       cp_with_parents "$p"
     fi
   done
+  NODE_COLLECTED=1
 }
 
 collect_shell() {
