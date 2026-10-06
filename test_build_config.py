@@ -2,6 +2,7 @@
 """Guard build defaults and cache-sensitive argument placement without Docker."""
 from pathlib import Path
 import re
+import subprocess
 import unittest
 
 REPO = Path(__file__).resolve().parent
@@ -30,6 +31,13 @@ class BuildConfigTests(unittest.TestCase):
             self.assertLess(builder.index(f"ARG {name}="), npm_install)
         self.assertNotIn("ARG USER_UID", builder)
         self.assertNotIn("ARG USER_GID", builder)
+
+    def test_build_uid_guard(self):
+        guard = re.search(r'^RUN (test "\$\{USER_UID\}" -gt 0 .*});', DOCKERFILE, re.MULTILINE)
+        self.assertIsNotNone(guard, "non-root UID build guard missing")
+        for uid in ("0", "000", "-1", "invalid", "1000"):
+            result = subprocess.run(["sh", "-c", guard[1]], env={"USER_UID": uid}, capture_output=True, text=True)
+            self.assertEqual(result.returncode == 0, uid == "1000", (uid, result.stderr))
 
     def test_ownership_does_not_invalidate_collection(self):
         collector = DOCKERFILE.split("FROM builder-tools AS collector")[1].split("FROM gcr.io/")[0]

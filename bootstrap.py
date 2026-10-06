@@ -101,6 +101,9 @@ def load_secrets(secrets_dir: Path = SECRETS_DIR, environ: dict[str, str] | None
 
 
 def bootstrap(args: list[str], execvp=os.execvp) -> None:
+    if os.geteuid() == 0:
+        raise RuntimeError("Pi must not run as UID 0; use a non-root container user")
+    os.umask(0o077)
     load_secrets()
     execvp("pi", ["pi", *args])
 

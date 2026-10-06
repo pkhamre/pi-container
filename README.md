@@ -40,10 +40,14 @@ Pi’s own options include `--print`, `--mode json`, `--provider`, `--model`,
 |---|---:|---|
 | `--memory VALUE` | `4g` | Container memory limit |
 | `--cpus VALUE` | `4` | Container CPU limit |
+| `--pids-limit VALUE` | `256` | Maximum container processes/threads; positive integer |
 | `--host-access` | off | Add the engine host gateway; prints a warning |
 
 Set `CONTAINER_ENGINE=docker` or `CONTAINER_ENGINE=podman`. Without it, Podman
 is preferred, then Docker. `PI_WORKSPACE` overrides the current directory.
+`PIDS_LIMIT` overrides the default process limit; `--pids-limit` takes precedence.
+Place launcher options before Pi arguments. Increase the process limit for large
+parallel builds, for example `pi-container --pids-limit 512 --version`.
 
 ## Persistent state
 
@@ -133,6 +137,14 @@ same state mount. Do not put secrets on the command line.
 The launcher uses a read-only root filesystem, an executable `/tmp` tmpfs,
 all Linux capabilities dropped, `no-new-privileges`, resource limits, a
 configurable non-root UID/GID, and SELinux-compatible `:Z` bind mounts.
+The launcher limits processes/threads to 256 by default and disables core dumps.
+The launcher and container bootstrap use `umask 077`, so normally created files
+are private (`600`) and directories are private (`700`). Existing files are not
+retroactively changed, and applications can explicitly choose other permissions.
+Production builds reject UID 0, and the normal container entrypoint refuses to
+start Pi as UID 0, including a `--user 0` override. Run builds as a non-root host
+user or explicitly supply a positive `USER_UID`. Overriding the entrypoint bypasses
+the bootstrap checks; these checks do not constrain the container engine owner.
 Secrets are read-only and are not baked into image layers. `--host-access`
 weakens network isolation; use it only when needed and protect host services.
 
