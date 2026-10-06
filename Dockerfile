@@ -2,12 +2,6 @@
 
 FROM debian:13-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS builder-tools
 
-ARG USER_UID=1000
-ARG USER_GID=1000
-ARG NODE_MAJOR=24
-ARG NPM_VERSION=12.2.0
-ARG PI_VERSION=1.0.3
-
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
@@ -25,6 +19,7 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
 COPY custom-ca.crt /tmp/custom-ca.crt
 RUN cat /tmp/custom-ca.crt >> /etc/ssl/certs/ca-certificates.crt && rm /tmp/custom-ca.crt
 
+ARG NODE_MAJOR=24
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     mkdir -p /etc/apt/keyrings && \
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource-repo.gpg.key && \
@@ -35,6 +30,8 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     apt-get update && apt-get install --no-install-recommends -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
+ARG NPM_VERSION=12.2.0
+ARG PI_VERSION=1.0.3
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     npm install --global --no-audit --no-fund npm@"${NPM_VERSION}" \
       @earendil-works/pi-coding-agent@"${PI_VERSION}" \
@@ -58,9 +55,6 @@ RUN chmod 0755 /usr/local/bin/collect-runtime-deps.sh
 
 FROM builder-tools AS collector
 
-ARG USER_UID=1000
-ARG USER_GID=1000
-
 RUN mkdir -p /opt/runtime-rootfs && \
     /usr/local/bin/collect-runtime-deps.sh /opt/runtime-rootfs \
       pi node npm npx bash python3 git rg fdfind kubectl helm skopeo \
@@ -75,6 +69,8 @@ RUN cd /opt/runtime-rootfs && \
       fi; \
     done
 
+ARG USER_UID=1000
+ARG USER_GID=1000
 RUN mkdir -p /opt/runtime-rootfs/app/.pi /opt/runtime-rootfs/app/.cache /opt/runtime-rootfs/app/.config/git /opt/runtime-rootfs/workspace /opt/runtime-rootfs/run/secrets && \
     chown -R "${USER_UID}:${USER_GID}" /opt/runtime-rootfs/app /opt/runtime-rootfs/workspace && \
     printf 'pi:x:%s:%s:Pi User:/app:/bin/bash\n' "${USER_UID}" "${USER_GID}" >> /opt/runtime-rootfs/etc/passwd && \
@@ -82,8 +78,6 @@ RUN mkdir -p /opt/runtime-rootfs/app/.pi /opt/runtime-rootfs/app/.cache /opt/run
 
 FROM gcr.io/distroless/base-debian13@sha256:9ef50bca108839d5986e4d84b7f7b2d79024c9293b7c35b162c6c55485bd5868 AS final
 
-ARG USER_UID=1000
-ARG USER_GID=1000
 WORKDIR /workspace
 
 ENV HOME=/app
@@ -95,5 +89,7 @@ ENV NPM_CONFIG_CACHE=/tmp/.npm
 COPY --from=collector /opt/runtime-rootfs/ /
 COPY --chmod=0755 bootstrap.py /usr/local/bin/bootstrap.py
 
+ARG USER_UID=1000
+ARG USER_GID=1000
 USER ${USER_UID}:${USER_GID}
 ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/bootstrap.py"]

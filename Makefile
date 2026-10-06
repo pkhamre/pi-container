@@ -25,6 +25,7 @@ shell: build-builder-tools
 test:
 	./test_bootstrap.py
 	./test_launcher.sh
+	python3 test_build_config.py
 	./test_collect_runtime_deps.sh
 
 smoke: build
