@@ -45,7 +45,10 @@ grep -Fx -- '--memory=2g' "$TEST_DIR/args"
 grep -Fx -- '--cpus=2' "$TEST_DIR/args"
 grep -Fx -- '--userns=keep-id' "$TEST_DIR/args"
 grep -F -- 'host.containers.internal:host-gateway' "$TEST_DIR/args"
-grep -Fx -- '--yolo' "$TEST_DIR/args"
+if grep -Fxq -- '--yolo' "$TEST_DIR/args"; then
+  echo "launcher must not inject --yolo" >&2
+  exit 1
+fi
 grep -Fx -- '--version' "$TEST_DIR/args"
 grep -Fx -- 'quoted argument' "$TEST_DIR/args"
 

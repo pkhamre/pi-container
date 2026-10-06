@@ -28,7 +28,7 @@ test:
 	./test_collect_runtime_deps.sh
 
 smoke: build
-	./test_smoke.sh
+	CONTAINER_ENGINE=$(ENGINE) PI_VERSION=$(PI_VERSION) ./test_smoke.sh
 
 clean:
 	$(ENGINE) rmi pi-container:latest pi-container:builder-tools || true
