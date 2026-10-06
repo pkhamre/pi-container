@@ -73,6 +73,21 @@ ldd() { printf 'libfixture.so => %s (0x123)\\n' "$LIB"; }
             self.assertEqual(os.readlink(self.copied(alias)), str(target))
             self.assertEqual(copies.count(str(alias)), 1)
 
+    def test_relative_alias_under_usr_merged_bin(self):
+        target = self.file("usr/bin/gnutrue")
+        target.chmod(0o755)
+        (self.base / "bin").symlink_to("usr/bin")
+        (target.parent / "true").symlink_to("gnutrue")
+        alias = self.base / "bin/true"
+        copies = self.successful('process "$ALIAS"\n', ALIAS=alias)
+        self.assertEqual(copies.count(str(target)), 1)
+        self.assertTrue(self.copied(alias).is_symlink())
+        self.assertEqual(os.readlink(self.copied(alias)), "gnutrue")
+        # The copied /bin alias is intentionally unresolved until usr-merge.
+        self.assertFalse(self.copied(alias).exists())
+        self.assertTrue(os.access(self.copied(alias.resolve()), os.X_OK))
+        self.assertEqual(self.copied(target).read_bytes(), target.read_bytes())
+
     def test_directory_coverage_still_collects_external_link_target(self):
         child = self.file("modules/npm/cli.js")
         external = self.file("external")
