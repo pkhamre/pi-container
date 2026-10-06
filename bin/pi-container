@@ -19,12 +19,14 @@ MEMORY_LIMIT="${MEMORY_LIMIT:-4g}"
 CPU_LIMIT="${CPU_LIMIT:-4}"
 PIDS_LIMIT="${PIDS_LIMIT:-256}"
 HOST_ACCESS=0
+KUBECONFIG_FILE=""
 
 while (($#)); do
   case "$1" in
     --memory) (($# >= 2)) || { echo "error: --memory requires a value" >&2; exit 2; }; MEMORY_LIMIT=$2; shift 2;;
     --cpus) (($# >= 2)) || { echo "error: --cpus requires a value" >&2; exit 2; }; CPU_LIMIT=$2; shift 2;;
     --pids-limit) (($# >= 2)) || { echo "error: --pids-limit requires a value" >&2; exit 2; }; PIDS_LIMIT=$2; shift 2;;
+    --kubeconfig) (($# >= 2)) && [[ -n "$2" ]] || { echo "error: --kubeconfig requires a file" >&2; exit 2; }; KUBECONFIG_FILE=$2; shift 2;;
     --host-access) HOST_ACCESS=1; shift;;
     *) break;;
   esac
@@ -32,6 +34,11 @@ done
 
 [[ "$PIDS_LIMIT" =~ ^[1-9][0-9]*$ ]] || { echo "error: --pids-limit / PIDS_LIMIT must be a positive integer" >&2; exit 2; }
 [[ -d "$WORKSPACE" ]] || { echo "Error: workspace path is not an existing directory: $WORKSPACE" >&2; exit 1; }
+if [[ -n "$KUBECONFIG_FILE" ]]; then
+  [[ -f "$KUBECONFIG_FILE" && -r "$KUBECONFIG_FILE" ]] || { echo "error: kubeconfig must be a readable file: $KUBECONFIG_FILE" >&2; exit 2; }
+  KUBECONFIG_FILE="$(cd "$(dirname "$KUBECONFIG_FILE")" && pwd)/$(basename "$KUBECONFIG_FILE")"
+  [[ "$KUBECONFIG_FILE" != *:* && "$KUBECONFIG_FILE" != *,* ]] || { echo "error: kubeconfig path must not contain colons or commas" >&2; exit 2; }
+fi
 mkdir -p "$STATE_DIR/state" "$STATE_DIR/secrets"
 chmod 700 "$STATE_DIR" "$STATE_DIR/state" "$STATE_DIR/secrets"
 for secret in "$STATE_DIR/secrets"/*; do
@@ -61,8 +68,8 @@ if [[ -f "$HOME/.config/git/config" ]]; then
 fi
 
 KUBE_ARGS=()
-if [[ -f "$HOME/.kube/config" ]]; then
-  KUBE_ARGS+=(-v "$HOME/.kube/config:/run/kubeconfig:ro,Z")
+if [[ -n "$KUBECONFIG_FILE" ]]; then
+  KUBE_ARGS+=(-v "$KUBECONFIG_FILE:/run/kubeconfig:ro,Z")
   ENV_ARGS+=(--env KUBECONFIG=/run/kubeconfig)
 fi
 

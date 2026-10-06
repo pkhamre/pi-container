@@ -41,6 +41,7 @@ Pi’s own options include `--print`, `--mode json`, `--provider`, `--model`,
 | `--memory VALUE` | `4g` | Container memory limit |
 | `--cpus VALUE` | `4` | Container CPU limit |
 | `--pids-limit VALUE` | `256` | Maximum container processes/threads; positive integer |
+| `--kubeconfig FILE` | none | Explicitly mount this kubeconfig read-only |
 | `--host-access` | off | Add the engine host gateway; prints a warning |
 
 Set `CONTAINER_ENGINE=docker` or `CONTAINER_ENGINE=podman`. Without it, Podman
@@ -60,7 +61,22 @@ The launcher stores Pi state below `~/.pi-container/state` and mounts it at
 - `~/.pi/agent/extensions/`, `skills/`, `prompts/`, and `themes/`
 - `~/.pi/agent/models-store.json`, `trust.json`, and `crashes.json`
 
-The entire host home directory is not mounted. When `~/.kube/config` exists, it is mounted read-only at `/run/kubeconfig` and `KUBECONFIG` is set so `kubectl` uses it by default. The image includes `kubectl`, `helm`, and `skopeo`.
+The entire host home directory is not mounted. Kubeconfig is **not mounted by
+default**, even when `~/.kube/config` or the host `KUBECONFIG` variable exists.
+To expose Kubernetes credentials explicitly:
+
+```sh
+pi-container --kubeconfig "$HOME/.kube/config"
+pi-container --kubeconfig ./cluster-config.yaml --version
+```
+
+The supplied file must exist and be readable. Relative paths are resolved from
+the current host directory; paths containing colons or commas are rejected.
+The file is mounted read-only at `/run/kubeconfig`, and the container receives
+`KUBECONFIG=/run/kubeconfig`. Only that file is mounted: external certificate/key
+files and host credential helper programs referenced by it are not included.
+Read-only access still allows Pi to read and use its credentials. The image
+includes `kubectl`, `helm`, and `skopeo`.
 
 ## Secrets
 

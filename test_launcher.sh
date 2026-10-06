@@ -30,6 +30,7 @@ chmod +x "$TEST_DIR/bin/podman" "$TEST_DIR/bin/docker"
 
 ARGS_FILE="$TEST_DIR/args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PATH" \
   PI_WORKSPACE="$TEST_DIR/workspace" "$ROOT_DIR/bin/pi-container" --memory 2g --cpus 2 --pids-limit 512 --host-access \
+  --kubeconfig "$TEST_DIR/home/.kube/config" \
   --version "quoted argument"
 
 grep -Fx -- 'run' "$TEST_DIR/args"
@@ -76,6 +77,10 @@ ARGS_FILE="$TEST_DIR/docker-args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PAT
 grep -Fx -- '--read-only' "$TEST_DIR/docker-args"
 grep -Fx -- '--pids-limit=256' "$TEST_DIR/docker-args"
 grep -Fx -- 'core=0' "$TEST_DIR/docker-args"
+if grep -Eq '/run/kubeconfig|KUBECONFIG=' "$TEST_DIR/docker-args"; then
+  echo "kubeconfig must not be mounted without --kubeconfig" >&2
+  exit 1
+fi
 if HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PATH" PI_WORKSPACE="$TEST_DIR/not-a-directory" \
   "$ROOT_DIR/bin/pi-container" >/dev/null 2>&1; then
   echo "expected invalid workspace to fail" >&2
@@ -99,12 +104,32 @@ expect_launcher_failure() {
 for invalid in 0 -1 1.5 invalid ""; do
   expect_launcher_failure "must be a positive integer" --pids-limit "$invalid"
 done
-for option in --pids-limit; do
+for option in --pids-limit --kubeconfig; do
   expect_launcher_failure "$option requires" "$option"
 done
-ARGS_FILE="$TEST_DIR/env-pids-args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PATH" \
-  PIDS_LIMIT=300 PI_WORKSPACE="$TEST_DIR/workspace" "$ROOT_DIR/bin/pi-container" --version
-grep -Fx -- '--pids-limit=300' "$TEST_DIR/env-pids-args"
+for invalid in "" "$TEST_DIR/missing" "$TEST_DIR/home/.kube"; do
+  expect_launcher_failure "kubeconfig" --kubeconfig "$invalid"
+done
+for name in "config:invalid" "config,invalid"; do
+  cp "$TEST_DIR/home/.kube/config" "$TEST_DIR/$name"
+  expect_launcher_failure "must not contain colons or commas" --kubeconfig "$TEST_DIR/$name"
+done
+cp "$TEST_DIR/home/.kube/config" "$TEST_DIR/config with spaces"
+(
+  cd "$TEST_DIR"
+  ARGS_FILE="$TEST_DIR/relative-args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PATH" \
+    PIDS_LIMIT=300 KUBECONFIG="$TEST_DIR/home/.kube/config" PI_WORKSPACE="$TEST_DIR/workspace" \
+    "$ROOT_DIR/bin/pi-container" --kubeconfig "config with spaces" --version
+)
+grep -Fx -- "$TEST_DIR/config with spaces:/run/kubeconfig:ro,Z" "$TEST_DIR/relative-args"
+grep -Fx -- '--pids-limit=300' "$TEST_DIR/relative-args"
+ARGS_FILE="$TEST_DIR/no-kube-args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PATH" \
+  KUBECONFIG="$TEST_DIR/home/.kube/config" PI_WORKSPACE="$TEST_DIR/workspace" \
+  "$ROOT_DIR/bin/pi-container" --version
+if grep -Eq '/run/kubeconfig|KUBECONFIG=' "$TEST_DIR/no-kube-args"; then
+  echo "host KUBECONFIG must not implicitly mount credentials" >&2
+  exit 1
+fi
 PIDS_LIMIT=invalid expect_launcher_failure "must be a positive integer"
 
 echo "launcher checks passed"
