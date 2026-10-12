@@ -28,7 +28,7 @@ run() {
 }
 
 version="$(run --version)"
-expected_version="${PI_VERSION:-1.0.3}"
+expected_version="${PI_VERSION:-1.1.0}"
 [[ "$version" == "$expected_version" ]] || { echo "expected Pi $expected_version, got $version" >&2; exit 1; }
 run --offline --list-models >/dev/null
 run --offline --version >/dev/null
