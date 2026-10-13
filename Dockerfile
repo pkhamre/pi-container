@@ -31,7 +31,7 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     rm -rf /var/lib/apt/lists/*
 
 ARG NPM_VERSION=12.2.0
-ARG PI_VERSION=1.1.0
+ARG PI_VERSION=1.2.0
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     npm install --global --no-audit --no-fund npm@"${NPM_VERSION}" \
       @earendil-works/pi-coding-agent@"${PI_VERSION}" \

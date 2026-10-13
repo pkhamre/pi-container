@@ -3,7 +3,7 @@
 ENGINE ?= $(shell command -v podman >/dev/null 2>&1 && echo podman || echo docker)
 USER_UID := $(shell id -u)
 USER_GID := $(shell id -g)
-PI_VERSION ?= 1.1.0
+PI_VERSION ?= 1.2.0
 NODE_MAJOR ?= 24
 NPM_VERSION ?= 12.2.0
 
