@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM debian:13-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS builder-tools
+FROM debian:13-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f AS builder-tools
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
@@ -31,7 +31,7 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     rm -rf /var/lib/apt/lists/*
 
 ARG NPM_VERSION=12.2.0
-ARG PI_VERSION=1.2.0
+ARG PI_VERSION=1.3.0
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     npm install --global --no-audit --no-fund npm@"${NPM_VERSION}" \
       @earendil-works/pi-coding-agent@"${PI_VERSION}" \
@@ -39,7 +39,7 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     && ln -sf "${PI_ROOT}/@earendil-works/pi-coding-agent/dist/bundle/cli.js" /usr/local/bin/pi \
     && chmod 0755 "${PI_ROOT}/@earendil-works/pi-coding-agent/dist/bundle/cli.js"
 
-ARG HELM_VERSION=v4.3.0
+ARG HELM_VERSION=v4.3.1
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     arch="$(dpkg --print-architecture)"; case "$arch" in amd64) helm_arch=amd64;; arm64) helm_arch=arm64;; *) echo "unsupported Helm architecture: $arch" >&2; exit 1;; esac; \
     curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${helm_arch}.tar.gz" -o /tmp/helm.tar.gz && \
@@ -77,7 +77,7 @@ RUN test "${USER_UID}" -gt 0 || { echo "USER_UID must be a positive, non-root UI
     printf 'pi:x:%s:%s:Pi User:/app:/bin/bash\n' "${USER_UID}" "${USER_GID}" >> /opt/runtime-rootfs/etc/passwd && \
     printf 'pi:x:%s:\n' "${USER_GID}" >> /opt/runtime-rootfs/etc/group
 
-FROM gcr.io/distroless/base-debian13@sha256:9ef50bca108839d5986e4d84b7f7b2d79024c9293b7c35b162c6c55485bd5868 AS final
+FROM gcr.io/distroless/base-debian13@sha256:389cad21f73e4c37b94ffe5b13736d5a92bd5bd3c6c6b38c2be1c881e14ba2bd AS final
 
 WORKDIR /workspace
 

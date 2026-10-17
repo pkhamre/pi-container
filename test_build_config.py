@@ -19,6 +19,16 @@ class BuildConfigTests(unittest.TestCase):
             self.assertIsNotNone(make)
             self.assertEqual(docker[1], make[1], name)
 
+    def test_pi_version_references_agree(self):
+        version = re.search(r"^ARG PI_VERSION=(.+)$", DOCKERFILE, re.MULTILINE)[1]
+        smoke = (REPO / "test_smoke.sh").read_text()
+        self.assertIn(f'expected_version="${{PI_VERSION:-{version}}}"', smoke)
+        readme = (REPO / "README.md").read_text()
+        self.assertIn(f"exact published Pi version `{version}`", readme)
+        examples = re.findall(r"PI_VERSION=([\d.]+)", readme)
+        self.assertTrue(examples)
+        self.assertTrue(all(example == version for example in examples))
+
     def test_versions_do_not_invalidate_os_install(self):
         builder = DOCKERFILE.split("FROM builder-tools AS collector")[0]
         os_install = builder.index("apt-get install")
