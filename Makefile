@@ -25,8 +25,8 @@ build-latest:
 	@set -eu; version=$$(curl -fsSL https://registry.npmjs.org/%40earendil-works%2Fpi-coding-agent/latest | python3 -c 'import json, sys; print(json.load(sys.stdin)["version"])'); test -n "$$version"; $(MAKE) build PI_VERSION=$$version
 
 shell: build-builder-tools
-	mkdir -p homebase workspace secrets
-	$(ENGINE) run --rm -it --workdir /workspace --read-only --tmpfs /tmp:exec,size=512m,mode=1777 --cap-drop=ALL --security-opt=no-new-privileges -v $(PWD)/homebase:/app:rw,Z -v $(PWD)/workspace:/workspace:rw,Z -v $(PWD)/secrets:/run/secrets:ro,Z --entrypoint /bin/bash pi-container:builder-tools
+	mkdir -p homebase workspace
+	$(ENGINE) run --rm -it --workdir /workspace --read-only --tmpfs /tmp:exec,size=512m,mode=1777 --cap-drop=ALL --security-opt=no-new-privileges -v $(PWD)/homebase:/app:rw,Z -v $(PWD)/workspace:/workspace:rw,Z --entrypoint /bin/bash pi-container:builder-tools
 
 test:
 	./test_bootstrap.py

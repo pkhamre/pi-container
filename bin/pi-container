@@ -18,7 +18,6 @@ WORKSPACE="${PI_WORKSPACE:-$(pwd)}"
 MEMORY_LIMIT="${MEMORY_LIMIT:-4g}"
 CPU_LIMIT="${CPU_LIMIT:-4}"
 PIDS_LIMIT="${PIDS_LIMIT:-256}"
-HOST_ACCESS=0
 KUBECONFIG_FILE=""
 
 while (($#)); do
@@ -27,7 +26,7 @@ while (($#)); do
     --cpus) (($# >= 2)) || { echo "error: --cpus requires a value" >&2; exit 2; }; CPU_LIMIT=$2; shift 2;;
     --pids-limit) (($# >= 2)) || { echo "error: --pids-limit requires a value" >&2; exit 2; }; PIDS_LIMIT=$2; shift 2;;
     --kubeconfig) (($# >= 2)) && [[ -n "$2" ]] || { echo "error: --kubeconfig requires a file" >&2; exit 2; }; KUBECONFIG_FILE=$2; shift 2;;
-    --host-access) HOST_ACCESS=1; shift;;
+    --host-access) echo "error: --host-access has been removed" >&2; exit 2;;
     *) break;;
   esac
 done
@@ -39,11 +38,8 @@ if [[ -n "$KUBECONFIG_FILE" ]]; then
   KUBECONFIG_FILE="$(cd "$(dirname "$KUBECONFIG_FILE")" && pwd)/$(basename "$KUBECONFIG_FILE")"
   [[ "$KUBECONFIG_FILE" != *:* && "$KUBECONFIG_FILE" != *,* ]] || { echo "error: kubeconfig path must not contain colons or commas" >&2; exit 2; }
 fi
-mkdir -p "$STATE_DIR/state" "$STATE_DIR/secrets"
-chmod 700 "$STATE_DIR" "$STATE_DIR/state" "$STATE_DIR/secrets"
-for secret in "$STATE_DIR/secrets"/*; do
-  [[ -f "$secret" && ! -L "$secret" ]] && chmod 600 "$secret"
-done
+mkdir -p "$STATE_DIR/state"
+chmod 700 "$STATE_DIR" "$STATE_DIR/state"
 
 reject_proxy_credentials() {
   [[ "$1" != *://*@* ]] || { echo "error: proxy URLs with embedded credentials are not supported" >&2; exit 2; }
@@ -73,13 +69,6 @@ if [[ -n "$KUBECONFIG_FILE" ]]; then
   ENV_ARGS+=(--env KUBECONFIG=/run/kubeconfig)
 fi
 
-HOST_ARGS=()
-if ((HOST_ACCESS)); then
-  if [[ "$ENGINE" == podman ]]; then HOST_ARGS+=(--add-host host.containers.internal:host-gateway)
-  else HOST_ARGS+=(--add-host host.docker.internal:host-gateway); fi
-  echo "warning: host access is enabled; Pi can reach host services through the container gateway" >&2
-fi
-
 USERNS_ARGS=()
 if [[ "$ENGINE" == podman ]]; then
   rootless="$($ENGINE info --format '{{.Host.Security.Rootless}}' 2>/dev/null || true)"
@@ -93,8 +82,7 @@ exec "$ENGINE" run --rm "${RUN_FLAGS[@]}" "${USERNS_ARGS[@]}" \
   --workdir /workspace --read-only --tmpfs /tmp:exec,size=512m,mode=1777 \
   --cap-drop=ALL --security-opt=no-new-privileges \
   --memory="$MEMORY_LIMIT" --cpus="$CPU_LIMIT" --pids-limit="$PIDS_LIMIT" --ulimit core=0 \
-  "${ENV_ARGS[@]}" "${HOST_ARGS[@]}" "${GIT_ARGS[@]}" "${KUBE_ARGS[@]}" \
+  "${ENV_ARGS[@]}" "${GIT_ARGS[@]}" "${KUBE_ARGS[@]}" \
   -v "$STATE_DIR/state:/app/.pi:rw,Z" \
-  -v "$STATE_DIR/secrets:/run/secrets:ro,Z" \
   -v "$WORKSPACE:/workspace:rw,Z" \
   pi-container:latest "$@"

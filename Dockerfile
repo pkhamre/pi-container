@@ -41,8 +41,12 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
 
 ARG HELM_VERSION=v4.3.1
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
-    arch="$(dpkg --print-architecture)"; case "$arch" in amd64) helm_arch=amd64;; arm64) helm_arch=arm64;; *) echo "unsupported Helm architecture: $arch" >&2; exit 1;; esac; \
+    arch="$(dpkg --print-architecture)"; case "${HELM_VERSION}/${arch}" in \
+      v4.3.1/amd64) helm_arch=amd64; helm_sha256=0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b;; \
+      v4.3.1/arm64) helm_arch=arm64; helm_sha256=8cf8f66ecbc252ac8f7f06cca68aba88508ddfde3a6a34feb1678ad1694b4f88;; \
+      *) echo "unsupported Helm version/architecture: ${HELM_VERSION}/${arch}; add a verified checksum first" >&2; exit 1;; esac; \
     curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${helm_arch}.tar.gz" -o /tmp/helm.tar.gz && \
+    printf '%s  %s\n' "$helm_sha256" /tmp/helm.tar.gz | sha256sum -c - && \
     tar -xzf /tmp/helm.tar.gz -C /tmp && install -m 0755 "/tmp/linux-${helm_arch}/helm" /usr/local/bin/helm && \
     rm -rf /tmp/helm.tar.gz "/tmp/linux-${helm_arch}"
 
@@ -72,7 +76,7 @@ RUN cd /opt/runtime-rootfs && \
 ARG USER_UID=1000
 ARG USER_GID=1000
 RUN test "${USER_UID}" -gt 0 || { echo "USER_UID must be a positive, non-root UID" >&2; exit 1; }; \
-    mkdir -p /opt/runtime-rootfs/app/.pi /opt/runtime-rootfs/app/.cache /opt/runtime-rootfs/app/.config/git /opt/runtime-rootfs/workspace /opt/runtime-rootfs/run/secrets && \
+    mkdir -p /opt/runtime-rootfs/app/.pi /opt/runtime-rootfs/app/.cache /opt/runtime-rootfs/app/.config/git /opt/runtime-rootfs/workspace && \
     chown -R "${USER_UID}:${USER_GID}" /opt/runtime-rootfs/app /opt/runtime-rootfs/workspace && \
     printf 'pi:x:%s:%s:Pi User:/app:/bin/bash\n' "${USER_UID}" "${USER_GID}" >> /opt/runtime-rootfs/etc/passwd && \
     printf 'pi:x:%s:\n' "${USER_GID}" >> /opt/runtime-rootfs/etc/group

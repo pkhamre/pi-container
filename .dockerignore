@@ -1,8 +1,8 @@
-.git
-.gitignore
-README.md
-test_*.sh
-test_*.py
-homebase
-workspace
-secrets
+# Deny all files unless explicitly required by the Dockerfile.
+**
+!Dockerfile
+!bootstrap.py
+!scripts/
+scripts/**
+!scripts/collect-runtime-deps.sh
+!custom-ca.crt

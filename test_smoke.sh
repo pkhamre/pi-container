@@ -15,15 +15,13 @@ fi
 
 TEST_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEST_DIR"' EXIT
-mkdir -p "$TEST_DIR/state" "$TEST_DIR/secrets" "$TEST_DIR/workspace"
-chmod 700 "$TEST_DIR/state" "$TEST_DIR/secrets"
-printf 'smoke-secret\n' > "$TEST_DIR/secrets/anthropic_api_key"
-chmod 600 "$TEST_DIR/secrets/anthropic_api_key"
+mkdir -p "$TEST_DIR/state" "$TEST_DIR/workspace"
+chmod 700 "$TEST_DIR/state"
 
 run() {
   "$ENGINE" run --rm "${USERNS_ARGS[@]}" --workdir /workspace --read-only --tmpfs /tmp:exec,size=512m,mode=1777 \
     --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=256 --ulimit core=0 \
-    -v "$TEST_DIR/state:/app/.pi:rw,Z" -v "$TEST_DIR/secrets:/run/secrets:ro,Z" \
+    -v "$TEST_DIR/state:/app/.pi:rw,Z" \
     -v "$TEST_DIR/workspace:/workspace:rw,Z" pi-container:latest "$@"
 }
 

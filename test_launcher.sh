@@ -29,13 +29,17 @@ EOF
 chmod +x "$TEST_DIR/bin/podman" "$TEST_DIR/bin/docker"
 
 ARGS_FILE="$TEST_DIR/args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PATH" \
-  PI_WORKSPACE="$TEST_DIR/workspace" "$ROOT_DIR/bin/pi-container" --memory 2g --cpus 2 --pids-limit 512 --host-access \
+  PI_WORKSPACE="$TEST_DIR/workspace" "$ROOT_DIR/bin/pi-container" --memory 2g --cpus 2 --pids-limit 512 \
   --kubeconfig "$TEST_DIR/home/.kube/config" \
   --version "quoted argument"
 
 grep -Fx -- 'run' "$TEST_DIR/args"
 grep -F -- "$TEST_DIR/home/.pi-container/state:/app/.pi:rw,Z" "$TEST_DIR/args"
-grep -F -- "$TEST_DIR/home/.pi-container/secrets:/run/secrets:ro,Z" "$TEST_DIR/args"
+if grep -Eq '/run/secrets|--add-host' "$TEST_DIR/args"; then
+  echo "launcher must not mount secrets or add host gateway mappings" >&2
+  exit 1
+fi
+[[ ! -e "$TEST_DIR/home/.pi-container/secrets" ]]
 grep -F -- "$TEST_DIR/workspace:/workspace:rw,Z" "$TEST_DIR/args"
 grep -F -- "$TEST_DIR/home/.gitconfig:/app/.gitconfig:ro,Z" "$TEST_DIR/args"
 grep -F -- "$TEST_DIR/home/.config/git/config:/app/.config/git/config:ro,Z" "$TEST_DIR/args"
@@ -52,7 +56,6 @@ grep -Fx -- '--ulimit' "$TEST_DIR/args"
 grep -Fx -- 'core=0' "$TEST_DIR/args"
 grep -Fx -- '0077' "$TEST_DIR/args.umask"
 grep -Fx -- '--userns=keep-id' "$TEST_DIR/args"
-grep -F -- 'host.containers.internal:host-gateway' "$TEST_DIR/args"
 if grep -Fxq -- '--yolo' "$TEST_DIR/args"; then
   echo "launcher must not inject --yolo" >&2
   exit 1
@@ -101,6 +104,7 @@ expect_launcher_failure() {
     exit 1
   }
 }
+expect_launcher_failure "--host-access has been removed" --host-access
 for invalid in 0 -1 1.5 invalid ""; do
   expect_launcher_failure "must be a positive integer" --pids-limit "$invalid"
 done
