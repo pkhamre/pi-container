@@ -30,7 +30,7 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     apt-get update && apt-get install --no-install-recommends -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-ARG NPM_VERSION=12.2.0
+ARG NPM_VERSION=12.2.1
 ARG PI_VERSION=1.4.0
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     npm install --global --no-audit --no-fund npm@"${NPM_VERSION}" \

@@ -5,7 +5,7 @@ USER_UID := $(shell id -u)
 USER_GID := $(shell id -g)
 PI_VERSION ?= 1.4.0
 NODE_MAJOR ?= 24
-NPM_VERSION ?= 12.2.0
+NPM_VERSION ?= 12.2.1
 
 BUILD_ARGS = --build-arg USER_UID=$(USER_UID) --build-arg USER_GID=$(USER_GID) --build-arg PI_VERSION=$(PI_VERSION) --build-arg NODE_MAJOR=$(NODE_MAJOR) --build-arg NPM_VERSION=$(NPM_VERSION)
 

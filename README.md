@@ -133,12 +133,12 @@ make prune-cache
 Override the verified package, Node major, or npm version with:
 
 ```sh
-make build PI_VERSION=1.4.0 NODE_MAJOR=24 NPM_VERSION=12.2.0
-docker build --build-arg PI_VERSION=1.4.0 --build-arg NODE_MAJOR=24 --build-arg NPM_VERSION=12.2.0 -t pi-container:latest .
+make build PI_VERSION=1.4.0 NODE_MAJOR=24 NPM_VERSION=12.2.1
+docker build --build-arg PI_VERSION=1.4.0 --build-arg NODE_MAJOR=24 --build-arg NPM_VERSION=12.2.1 -t pi-container:latest .
 ```
 
 The default is the exact published Pi version `1.4.0`, Node 24 LTS, and npm
-`12.2.0`. Builds install the latest available Node 24.x release from NodeSource.
+`12.2.1`. Builds install the latest available Node 24.x release from NodeSource.
 Pi currently requires Node `>=22.19.0`.
 
 Helm archives are verified against architecture-specific SHA-256 values pinned
