@@ -13,7 +13,7 @@ ENV NPM_CONFIG_CAFILE=/etc/ssl/certs/ca-certificates.crt
 
 RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_proxy:-${HTTPS_PROXY:-}}" no_proxy="${no_proxy:-${NO_PROXY:-}}"; \
     apt-get update && apt-get install --no-install-recommends -y \
-      bash ca-certificates curl fd-find git gnupg jq kubernetes-client openssl python3 ripgrep skopeo tar \
+      bash ca-certificates curl fd-find git gnupg jq kubernetes-client openssh-client openssl python3 ripgrep skopeo tar \
     && rm -rf /var/lib/apt/lists/*
 
 COPY custom-ca.crt /tmp/custom-ca.crt
@@ -50,7 +50,7 @@ RUN export http_proxy="${http_proxy:-${HTTP_PROXY:-}}" https_proxy="${https_prox
     tar -xzf /tmp/helm.tar.gz -C /tmp && install -m 0755 "/tmp/linux-${helm_arch}/helm" /usr/local/bin/helm && \
     rm -rf /tmp/helm.tar.gz "/tmp/linux-${helm_arch}"
 
-RUN node --version && npm --version && pi --version && kubectl version --client && helm version --short && skopeo --version && bash --version | head -n 1
+RUN node --version && npm --version && pi --version && kubectl version --client && helm version --short && skopeo --version && ssh -V && bash --version | head -n 1
 
 RUN ln -sf "$(command -v fdfind)" /usr/local/bin/fd
 
@@ -61,7 +61,7 @@ FROM builder-tools AS collector
 
 RUN mkdir -p /opt/runtime-rootfs && \
     /usr/local/bin/collect-runtime-deps.sh /opt/runtime-rootfs \
-      pi node npm npx bash python3 git rg fdfind kubectl helm skopeo \
+      pi node npm npx bash python3 git ssh rg fdfind kubectl helm skopeo \
       /usr/lib/git-core/git-remote-http /usr/lib/git-core/git-remote-https \
       mkdir mktemp find grep cat head tail sed awk ls cp mv rm chmod wc sort cut env date \
       dirname basename readlink pwd sh
