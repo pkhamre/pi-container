@@ -39,6 +39,7 @@ Pi’s own options include `--print`, `--mode json`, `--provider`, `--model`,
 | `--cpus VALUE` | `4` | Container CPU limit |
 | `--pids-limit VALUE` | `256` | Maximum container processes/threads; positive integer |
 | `--kubeconfig FILE` | none | Explicitly mount this kubeconfig read-only |
+| `--ssh-agent` | off | Forward the host SSH agent for Git SSH authentication |
 
 Set `CONTAINER_ENGINE=docker` or `CONTAINER_ENGINE=podman`. Without it, Podman
 is preferred, then Docker. `PI_WORKSPACE` overrides the current directory.
@@ -73,6 +74,17 @@ The file is mounted read-only at `/run/kubeconfig`, and the container receives
 files and host credential helper programs referenced by it are not included.
 Read-only access still allows Pi to read and use its credentials. The image
 includes `kubectl`, `helm`, and `skopeo`.
+
+For Git push/pull over SSH, opt in to forwarding the host SSH agent:
+
+```sh
+pi-container --ssh-agent
+```
+
+The host must have `SSH_AUTH_SOCK` set to an existing Unix socket. The launcher
+mounts that socket at `/run/ssh-agent.sock` and sets `SSH_AUTH_SOCK` in the
+container. It does not copy private keys or mount `~/.ssh`; SSH agent access is
+available to processes running inside the container while it is running.
 
 ## Authentication
 

@@ -19,6 +19,7 @@ MEMORY_LIMIT="${MEMORY_LIMIT:-4g}"
 CPU_LIMIT="${CPU_LIMIT:-4}"
 PIDS_LIMIT="${PIDS_LIMIT:-256}"
 KUBECONFIG_FILE=""
+SSH_AGENT_FORWARD=false
 
 while (($#)); do
   case "$1" in
@@ -26,6 +27,7 @@ while (($#)); do
     --cpus) (($# >= 2)) || { echo "error: --cpus requires a value" >&2; exit 2; }; CPU_LIMIT=$2; shift 2;;
     --pids-limit) (($# >= 2)) || { echo "error: --pids-limit requires a value" >&2; exit 2; }; PIDS_LIMIT=$2; shift 2;;
     --kubeconfig) (($# >= 2)) && [[ -n "$2" ]] || { echo "error: --kubeconfig requires a file" >&2; exit 2; }; KUBECONFIG_FILE=$2; shift 2;;
+    --ssh-agent) SSH_AGENT_FORWARD=true; shift;;
     --host-access) echo "error: --host-access has been removed" >&2; exit 2;;
     *) break;;
   esac
@@ -37,6 +39,11 @@ if [[ -n "$KUBECONFIG_FILE" ]]; then
   [[ -f "$KUBECONFIG_FILE" && -r "$KUBECONFIG_FILE" ]] || { echo "error: kubeconfig must be a readable file: $KUBECONFIG_FILE" >&2; exit 2; }
   KUBECONFIG_FILE="$(cd "$(dirname "$KUBECONFIG_FILE")" && pwd)/$(basename "$KUBECONFIG_FILE")"
   [[ "$KUBECONFIG_FILE" != *:* && "$KUBECONFIG_FILE" != *,* ]] || { echo "error: kubeconfig path must not contain colons or commas" >&2; exit 2; }
+fi
+if [[ "$SSH_AGENT_FORWARD" == true ]]; then
+  [[ -n "${SSH_AUTH_SOCK:-}" && -S "$SSH_AUTH_SOCK" ]] || { echo "error: --ssh-agent requires SSH_AUTH_SOCK to point to an SSH agent socket" >&2; exit 2; }
+  SSH_AUTH_SOCK="$(cd "$(dirname "$SSH_AUTH_SOCK")" && pwd)/$(basename "$SSH_AUTH_SOCK")"
+  [[ "$SSH_AUTH_SOCK" != *:* && "$SSH_AUTH_SOCK" != *,* ]] || { echo "error: SSH agent socket path must not contain colons or commas" >&2; exit 2; }
 fi
 mkdir -p "$STATE_DIR/state"
 chmod 700 "$STATE_DIR" "$STATE_DIR/state"
@@ -64,6 +71,10 @@ if [[ -f "$HOME/.config/git/config" ]]; then
 fi
 
 KUBE_ARGS=()
+SSH_ARGS=()
+if [[ "$SSH_AGENT_FORWARD" == true ]]; then
+  SSH_ARGS+=(-v "$SSH_AUTH_SOCK:/run/ssh-agent.sock" --env SSH_AUTH_SOCK=/run/ssh-agent.sock)
+fi
 if [[ -n "$KUBECONFIG_FILE" ]]; then
   KUBE_ARGS+=(-v "$KUBECONFIG_FILE:/run/kubeconfig:ro,Z")
   ENV_ARGS+=(--env KUBECONFIG=/run/kubeconfig)
@@ -82,7 +93,7 @@ exec "$ENGINE" run --rm "${RUN_FLAGS[@]}" "${USERNS_ARGS[@]}" \
   --workdir /workspace --read-only --tmpfs /tmp:exec,size=512m,mode=1777 \
   --cap-drop=ALL --security-opt=no-new-privileges \
   --memory="$MEMORY_LIMIT" --cpus="$CPU_LIMIT" --pids-limit="$PIDS_LIMIT" --ulimit core=0 \
-  "${ENV_ARGS[@]}" "${GIT_ARGS[@]}" "${KUBE_ARGS[@]}" \
+  "${ENV_ARGS[@]}" "${GIT_ARGS[@]}" "${KUBE_ARGS[@]}" "${SSH_ARGS[@]}" \
   -v "$STATE_DIR/state:/app/.pi:rw,Z" \
   -v "$WORKSPACE:/workspace:rw,Z" \
   pi-container:latest "$@"

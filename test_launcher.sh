@@ -135,5 +135,20 @@ if grep -Eq '/run/kubeconfig|KUBECONFIG=' "$TEST_DIR/no-kube-args"; then
   exit 1
 fi
 PIDS_LIMIT=invalid expect_launcher_failure "must be a positive integer"
+expect_launcher_failure "requires SSH_AUTH_SOCK" --ssh-agent
+
+# Agent forwarding is explicitly opt-in and passes only the socket into the container.
+mkdir -p "$TEST_DIR/agent"
+# Create a Unix socket for the launcher's validation check.
+python3 - "$TEST_DIR/agent/sock" <<'PY'
+import socket, sys
+s = socket.socket(socket.AF_UNIX)
+s.bind(sys.argv[1])
+PY
+ARGS_FILE="$TEST_DIR/ssh-agent-args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$PATH" \
+  SSH_AUTH_SOCK="$TEST_DIR/agent/sock" PI_WORKSPACE="$TEST_DIR/workspace" \
+  "$ROOT_DIR/bin/pi-container" --ssh-agent --version
+grep -F -- "$TEST_DIR/agent/sock:/run/ssh-agent.sock" "$TEST_DIR/ssh-agent-args"
+grep -Fx -- 'SSH_AUTH_SOCK=/run/ssh-agent.sock' "$TEST_DIR/ssh-agent-args"
 
 echo "launcher checks passed"
