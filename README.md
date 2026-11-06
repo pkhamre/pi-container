@@ -81,10 +81,12 @@ For Git push/pull over SSH, opt in to forwarding the host SSH agent:
 pi-container --ssh-agent
 ```
 
-The host must have `SSH_AUTH_SOCK` set to an existing Unix socket. The launcher
-mounts that socket at `/run/ssh-agent.sock` and sets `SSH_AUTH_SOCK` in the
-container. It does not copy private keys or mount `~/.ssh`; SSH agent access is
-available to processes running inside the container while it is running.
+The host must have `SSH_AUTH_SOCK` set to an existing Unix socket and a readable
+`~/.ssh/known_hosts` file. The launcher mounts the agent socket at
+`/run/ssh-agent.sock`, sets `SSH_AUTH_SOCK` in the container, and mounts
+`known_hosts` read-only at `/app/.ssh/known_hosts` for host verification. It does
+not copy private keys or mount the rest of `~/.ssh`; SSH agent access is available
+to processes running inside the container while it is running.
 
 ## Authentication
 

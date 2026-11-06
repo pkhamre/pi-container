@@ -9,8 +9,9 @@ mkdir -p "$TEST_DIR/bin" "$TEST_DIR/home" "$TEST_DIR/workspace"
 printf '%s\n' '[user]' '  name = Test User' '  email = test@example.com' > "$TEST_DIR/home/.gitconfig"
 mkdir -p "$TEST_DIR/home/.kube"
 printf '%s\n' 'apiVersion: v1' > "$TEST_DIR/home/.kube/config"
-mkdir -p "$TEST_DIR/home/.config/git"
+mkdir -p "$TEST_DIR/home/.config/git" "$TEST_DIR/home/.ssh"
 printf '%s\n' '[user]' '  signingkey = test-key' > "$TEST_DIR/home/.config/git/config"
+printf '%s\n' 'github.com ssh-ed25519 test-host-key' > "$TEST_DIR/home/.ssh/known_hosts"
 
 cat > "$TEST_DIR/bin/podman" <<'EOF'
 #!/usr/bin/env bash
@@ -135,7 +136,7 @@ if grep -Eq '/run/kubeconfig|KUBECONFIG=' "$TEST_DIR/no-kube-args"; then
   exit 1
 fi
 PIDS_LIMIT=invalid expect_launcher_failure "must be a positive integer"
-expect_launcher_failure "requires SSH_AUTH_SOCK" --ssh-agent
+SSH_AUTH_SOCK= expect_launcher_failure "requires SSH_AUTH_SOCK" --ssh-agent
 
 # Agent forwarding is explicitly opt-in and passes only the socket into the container.
 mkdir -p "$TEST_DIR/agent"
@@ -150,5 +151,6 @@ ARGS_FILE="$TEST_DIR/ssh-agent-args" HOME="$TEST_DIR/home" PATH="$TEST_DIR/bin:$
   "$ROOT_DIR/bin/pi-container" --ssh-agent --version
 grep -F -- "$TEST_DIR/agent/sock:/run/ssh-agent.sock" "$TEST_DIR/ssh-agent-args"
 grep -Fx -- 'SSH_AUTH_SOCK=/run/ssh-agent.sock' "$TEST_DIR/ssh-agent-args"
+grep -Fx -- "$TEST_DIR/home/.ssh/known_hosts:/app/.ssh/known_hosts:ro,Z" "$TEST_DIR/ssh-agent-args"
 
 echo "launcher checks passed"

@@ -44,6 +44,10 @@ if [[ "$SSH_AGENT_FORWARD" == true ]]; then
   [[ -n "${SSH_AUTH_SOCK:-}" && -S "$SSH_AUTH_SOCK" ]] || { echo "error: --ssh-agent requires SSH_AUTH_SOCK to point to an SSH agent socket" >&2; exit 2; }
   SSH_AUTH_SOCK="$(cd "$(dirname "$SSH_AUTH_SOCK")" && pwd)/$(basename "$SSH_AUTH_SOCK")"
   [[ "$SSH_AUTH_SOCK" != *:* && "$SSH_AUTH_SOCK" != *,* ]] || { echo "error: SSH agent socket path must not contain colons or commas" >&2; exit 2; }
+  SSH_KNOWN_HOSTS="$HOME/.ssh/known_hosts"
+  [[ -f "$SSH_KNOWN_HOSTS" && -r "$SSH_KNOWN_HOSTS" ]] || { echo "error: --ssh-agent requires a readable $SSH_KNOWN_HOSTS file for SSH host verification" >&2; exit 2; }
+  SSH_KNOWN_HOSTS="$(cd "$(dirname "$SSH_KNOWN_HOSTS")" && pwd)/$(basename "$SSH_KNOWN_HOSTS")"
+  [[ "$SSH_KNOWN_HOSTS" != *:* && "$SSH_KNOWN_HOSTS" != *,* ]] || { echo "error: SSH known_hosts path must not contain colons or commas" >&2; exit 2; }
 fi
 mkdir -p "$STATE_DIR/state"
 chmod 700 "$STATE_DIR" "$STATE_DIR/state"
@@ -74,6 +78,7 @@ KUBE_ARGS=()
 SSH_ARGS=()
 if [[ "$SSH_AGENT_FORWARD" == true ]]; then
   SSH_ARGS+=(-v "$SSH_AUTH_SOCK:/run/ssh-agent.sock" --env SSH_AUTH_SOCK=/run/ssh-agent.sock)
+  SSH_ARGS+=(-v "$SSH_KNOWN_HOSTS:/app/.ssh/known_hosts:ro,Z")
 fi
 if [[ -n "$KUBECONFIG_FILE" ]]; then
   KUBE_ARGS+=(-v "$KUBECONFIG_FILE:/run/kubeconfig:ro,Z")
